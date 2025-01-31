@@ -65,4 +65,10 @@ curl http://localhost:8000/api/faqs/?lang=hi
 
 ## Images
 ![post](images/image.png)
-![get](images/image_1.png)
+
+## get in hindi
+![get](images/image1.png)
+
+## get in bengali
+![get](images/image2.png)
+

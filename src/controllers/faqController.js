@@ -38,33 +38,54 @@ class FAQController {
     }
   }
 
-  async getFAQs(req, res) {
+  async  getFAQs(req, res) {
     try {
       const { lang = 'en' } = req.query;
-
-      // Fetch FAQs
-      const faqs = await FAQ.find();
-
+      
+      // Validate language parameter
+      const supportedLanguages = ['en', 'hi', 'bn', 'fr'];
+      if (!supportedLanguages.includes(lang)) {
+        return res.status(400).json({
+          message: `Invalid language code. Supported languages are: ${supportedLanguages.join(', ')}`
+        });
+      }
+  
+      // Fetch all FAQs
+      const faqs = await FAQ.find()
+        .sort({ createdAt: -1 });
+  
       // Translate FAQs to requested language
       const translatedFAQs = await Promise.all(
         faqs.map(async (faq) => {
+          // Get translated content (will be cached if already exists)
           const translatedContent = await faq.getTranslatedContent(lang);
+          
           return {
-            _id: faq._id,
-            ...translatedContent
+            id: faq._id,
+            question: translatedContent.question,
+            answer: translatedContent.answer,
+            originalLanguage: faq.language,
+            createdAt: faq.createdAt
           };
         })
       );
-
-      res.json(translatedFAQs);
+  
+      res.json({
+        language: lang,
+        count: translatedFAQs.length,
+        faqs: translatedFAQs
+      });
+  
     } catch (error) {
+      console.error('FAQ fetch error:', error);
       res.status(500).json({ 
-        message: 'Error fetching FAQs', 
-        error: error.message 
+        message: 'Error fetching FAQs',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
-
+  
+  
   async updateFAQ(req, res) {
     try {
       const { id } = req.params;
