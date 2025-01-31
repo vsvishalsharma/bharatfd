@@ -14,7 +14,6 @@ A comprehensive Node.js-based FAQ management system with multilingual support, t
 - Node.js (v18+)
 - MongoDB
 - Redis
-- Google Translate API Key
 
 ## Installation
 
@@ -59,3 +58,11 @@ docker-compose up --build
 ```
 
 ### Get FAQs
+curl http://localhost:8000/api/faqs/
+
+## Fetch FAQs in Hindi
+curl http://localhost:8000/api/faqs/?lang=hi
+
+## Images
+![post](images/image.png)
+![get](images/image_1.png)
