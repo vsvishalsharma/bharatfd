@@ -1,40 +1,54 @@
-const { Translate } = require('@google-cloud/translate').v2;
-const redisClient = require('../config/redis');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 class TranslationService {
   constructor() {
-    // Initialize Google Translate client
-    this.translate = new Translate({
-      key: process.env.GOOGLE_TRANSLATE_API_KEY
-    });
+    // Ensure you have set GOOGLE_API_KEY in your .env file
+    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    this.model = this.genAI.getGenerativeModel({ model: "gemini-pro"});
   }
 
   async translate(text, sourceLanguage, targetLanguage) {
-    // Check cache first
-    const cacheKey = `translation:${sourceLanguage}:${targetLanguage}:${text}`;
-    
+    const languageMap = {
+      'en': 'English',
+      'hi': 'Hindi',
+      'bn': 'Bengali',
+      'fr': 'French'
+    };
+
     try {
-      // Check Redis cache
-      const cachedTranslation = await redisClient.get(cacheKey);
-      if (cachedTranslation) {
-        return cachedTranslation;
-      }
+      const prompt = `Translate the following text from ${languageMap[sourceLanguage] || 'English'} to ${languageMap[targetLanguage] || 'English'}. 
+      Text: "${text}"
+      
+      Provide only the translated text without any additional commentary.`;
 
-      // Perform translation
-      const [translation] = await this.translate.translate(text, {
-        from: sourceLanguage,
-        to: targetLanguage
-      });
+      const result = await this.model.generateContent(prompt);
+      const response = await result.response;
+      const translatedText = response.text().trim();
 
-      // Cache the translation for future use
-      await redisClient.set(cacheKey, translation, {
-        EX: 60 * 60 * 24 // Expire in 24 hours
-      });
-
-      return translation;
+      return translatedText || text;
     } catch (error) {
       console.error('Translation error:', error);
-      throw error;
+      return text; // Fallback to original text
+    }
+  }
+
+  async detectLanguage(text) {
+    try {
+      const prompt = `Detect the language of the following text and respond with the two-letter language code:
+      "${text}"
+      
+      Respond with only the language code (en, hi, bn, fr, etc.)`;
+
+      const result = await this.model.generateContent(prompt);
+      const response = await result.response;
+      const detectedLanguage = response.text().trim().toLowerCase();
+
+      // Validate detected language
+      const validLanguages = ['en', 'hi', 'bn', 'fr'];
+      return validLanguages.includes(detectedLanguage) ? detectedLanguage : 'en';
+    } catch (error) {
+      console.error('Language detection error:', error);
+      return 'en';
     }
   }
 }
